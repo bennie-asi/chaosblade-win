@@ -76,7 +76,9 @@ var cpuLoadCmd = &cobra.Command{
 func init() {
 	createCmd.AddCommand(cpuCmd)
 	cpuCmd.AddCommand(cpuLoadCmd)
-	cpuLoadCmd.Flags().IntVarP(&cpuCores, "cores", "c", runtime.NumCPU(), "Number of CPU cores to stress")
-	cpuLoadCmd.Flags().IntVar(&cpuPercent, "percent", 100, "Approximate CPU utilization percent per core (1-100)")
-	cpuLoadCmd.Flags().DurationVar(&cpuDuration, "duration", 0, "Optional duration before auto-stop (e.g. 30s, 5m)")
+	mustBindFlags(cpuLoadCmd, spec.MustActionSpec("cpu", "load"), map[string]any{
+		"cores":    &cpuCores,
+		"percent":  &cpuPercent,
+		"duration": &cpuDuration,
+	})
 }

@@ -89,7 +89,9 @@ var diskFillCmd = &cobra.Command{
 func init() {
 	createCmd.AddCommand(diskCmd)
 	diskCmd.AddCommand(diskFillCmd)
-	diskFillCmd.Flags().Int64Var(&diskSizeMB, "size", 512, "Data size to write in MB")
-	diskFillCmd.Flags().StringVar(&diskPath, "path", "", "Target file path (defaults to temp file)")
-	diskFillCmd.Flags().Float64Var(&diskPercent, "percent", 0, "Data to write as percent of disk total (overrides size if >0)")
+	mustBindFlags(diskFillCmd, spec.MustActionSpec("disk", "fill"), map[string]any{
+		"size":    &diskSizeMB,
+		"path":    &diskPath,
+		"percent": &diskPercent,
+	})
 }

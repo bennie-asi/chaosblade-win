@@ -19,7 +19,7 @@ type Action struct {
 type FlagSpec struct {
 	Name      string `json:"name"`
 	Shorthand string `json:"shorthand,omitempty"`
-	Type      string `json:"type"` // string, int, float, duration, bool
+	Type      string `json:"type"` // string, int, int64, float, duration, bool
 	Default   any    `json:"default,omitempty"`
 	Usage     string `json:"usage"`
 }

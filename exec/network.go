@@ -22,6 +22,8 @@ type NetworkDelayRunner struct {
 	Filter        string
 }
 
+const defaultNetFilter = "outbound and tcp"
+
 // NewNetworkDelayRunner creates a runner with given shaping parameters.
 func NewNetworkDelayRunner(delayMillis, jitterMillis int, lossPercent float64, filter string, bandwidthKbps int) *NetworkDelayRunner {
 	return &NetworkDelayRunner{
@@ -40,7 +42,7 @@ func (r *NetworkDelayRunner) Run(ctx context.Context) error {
 	}
 
 	if r.Filter == "" {
-		r.Filter = "true"
+		r.Filter = defaultNetFilter
 	}
 
 	if err := loadWinDivert(); err != nil {

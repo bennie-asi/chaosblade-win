@@ -64,6 +64,8 @@ var memLoadCmd = &cobra.Command{
 func init() {
 	createCmd.AddCommand(memCmd)
 	memCmd.AddCommand(memLoadCmd)
-	memLoadCmd.Flags().Int64Var(&memSizeMB, "size", 256, "Memory to allocate in MB")
-	memLoadCmd.Flags().Float64Var(&memPercent, "percent", 0, "Memory to allocate as percent of total (overrides size if >0)")
+	mustBindFlags(memLoadCmd, spec.MustActionSpec("mem", "load"), map[string]any{
+		"size":    &memSizeMB,
+		"percent": &memPercent,
+	})
 }

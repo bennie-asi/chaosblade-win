@@ -15,6 +15,8 @@ import (
 )
 
 var netTargetSpec = spec.Registry["net"]
+var netDelayAction = spec.MustActionSpec("net", "delay")
+var netDefaultFilter = stringDefault(netDelayAction.Flags, "filter", "true")
 
 var netCmd = &cobra.Command{
 	Use:   "net",
@@ -22,10 +24,30 @@ var netCmd = &cobra.Command{
 }
 
 var netDelayCmd = &cobra.Command{
-	Use:   "delay",
-	Short: spec.MustActionSpec("net", "delay").Short,
-	Long:  spec.MustActionSpec("net", "delay").Long,
+	Use:     "delay [delay_ms]",
+	Short:   netDelayAction.Short,
+	Long:    netDelayAction.Long,
+	Example: "chaosblade-win create net delay 120 --jitter 20 --loss 1.5 --filter \"outbound and tcp\"",
+	Args:    cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) == 1 {
+			v, err := strconv.Atoi(args[0])
+			if err != nil || v < 0 {
+				return fmt.Errorf("delay must be a non-negative integer milliseconds value")
+			}
+			netDelayMs = v
+		}
+
+		if netDelayMs < 0 || netJitterMs < 0 || netBandwidthKbps < 0 {
+			return fmt.Errorf("delay, jitter, and bandwidth must be non-negative")
+		}
+		if netLossPercent < 0 || netLossPercent > 100 {
+			return fmt.Errorf("loss must be between 0 and 100")
+		}
+		if netFilter == "" {
+			netFilter = netDefaultFilter
+		}
+
 		runner := exec.NewNetworkDelayRunner(netDelayMs, netJitterMs, netLossPercent, netFilter, netBandwidthKbps)
 
 		cleanup, err := exec.TrackExperiment("net", "delay", map[string]string{
@@ -63,9 +85,22 @@ func init() {
 	createCmd.AddCommand(netCmd)
 	netCmd.AddCommand(netDelayCmd)
 
-	netDelayCmd.Flags().IntVar(&netDelayMs, "delay", 100, "Base one-way delay in ms")
-	netDelayCmd.Flags().IntVar(&netJitterMs, "jitter", 0, "Jitter in ms")
-	netDelayCmd.Flags().Float64Var(&netLossPercent, "loss", 0, "Packet loss percent (0-100)")
-	netDelayCmd.Flags().StringVar(&netFilter, "filter", "true", "WinDivert filter expression (e.g., 'outbound and tcp')")
-	netDelayCmd.Flags().IntVar(&netBandwidthKbps, "bandwidth", 0, "Bandwidth cap in kbps (0 means unlimited)")
+	mustBindFlags(netDelayCmd, netDelayAction, map[string]any{
+		"delay":     &netDelayMs,
+		"jitter":    &netJitterMs,
+		"loss":      &netLossPercent,
+		"filter":    &netFilter,
+		"bandwidth": &netBandwidthKbps,
+	})
+}
+
+func stringDefault(flags []spec.FlagSpec, name, fallback string) string {
+	for _, f := range flags {
+		if f.Name == name {
+			if v, ok := f.Default.(string); ok {
+				return v
+			}
+		}
+	}
+	return fallback
 }

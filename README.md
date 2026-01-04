@@ -15,7 +15,7 @@ A Go CLI skeleton inspired by ChaosBlade, built with Cobra for Windows environme
 - Stop the tracked CPU experiment: `chaosblade-win destroy cpu`
 - Fill disk with ~1 GB (keeps 64 MB headroom when using --percent): `chaosblade-win create disk fill --size 1024`
 - Allocate ~25% of memory: `chaosblade-win create mem load --percent 25`
-- Start network delay/loss/bandwidth (requires WinDivert): `chaosblade-win create net delay --delay 120 --jitter 40 --loss 1.5 --bandwidth 500 --filter "outbound"`
+- Start network delay/loss/bandwidth (requires WinDivert): `chaosblade-win create net delay 120 --jitter 40 --loss 1.5 --bandwidth 500 --filter "outbound and tcp"`
 - Tear down any network experiment: `chaosblade-win destroy net`
 
 ## Project layout

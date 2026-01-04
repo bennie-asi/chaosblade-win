@@ -1,5 +1,10 @@
 package spec
 
+import (
+	"runtime"
+	"time"
+)
+
 // Registry holds built-in target/action specifications used by the CLI.
 var Registry = map[string]TargetSpec{
 	"cpu": {
@@ -12,9 +17,9 @@ var Registry = map[string]TargetSpec{
 				Short:  "Run a CPU load with optional percent/duration",
 				Long:   "Stress CPU cores with a target utilization percent and optional duration.",
 				Flags: []FlagSpec{
-					{Name: "cores", Shorthand: "c", Type: "int", Default: "runtime.NumCPU()", Usage: "Number of CPU cores to stress"},
+					{Name: "cores", Shorthand: "c", Type: "int", Default: runtime.NumCPU(), Usage: "Number of CPU cores to stress"},
 					{Name: "percent", Type: "int", Default: 100, Usage: "Approximate CPU utilization percent per core (1-100)"},
-					{Name: "duration", Type: "duration", Default: "0", Usage: "Optional duration before auto-stop (e.g. 30s, 5m)"},
+					{Name: "duration", Type: "duration", Default: time.Duration(0), Usage: "Optional duration before auto-stop (e.g. 30s, 5m)"},
 				},
 			},
 		},
@@ -29,8 +34,8 @@ var Registry = map[string]TargetSpec{
 				Short:  "Allocate and hold memory",
 				Long:   "Allocates memory by size or percent of total and holds it until stopped.",
 				Flags: []FlagSpec{
-					{Name: "size", Type: "int", Default: 256, Usage: "Memory to allocate in MB"},
-					{Name: "percent", Type: "float", Default: 0, Usage: "Memory to allocate as percent of total (overrides size if >0)"},
+					{Name: "size", Type: "int64", Default: int64(256), Usage: "Memory to allocate in MB"},
+					{Name: "percent", Type: "float", Default: float64(0), Usage: "Memory to allocate as percent of total (overrides size if >0)"},
 				},
 			},
 		},
@@ -45,8 +50,8 @@ var Registry = map[string]TargetSpec{
 				Short:  "Fill disk with temporary data",
 				Long:   "Writes data to a file until the requested size/percent is reached, then holds it.",
 				Flags: []FlagSpec{
-					{Name: "size", Type: "int", Default: 512, Usage: "Data size to write in MB"},
-					{Name: "percent", Type: "float", Default: 0, Usage: "Data to write as percent of disk total (overrides size if >0)"},
+					{Name: "size", Type: "int64", Default: int64(512), Usage: "Data size to write in MB"},
+					{Name: "percent", Type: "float", Default: float64(0), Usage: "Data to write as percent of disk total (overrides size if >0)"},
 					{Name: "path", Type: "string", Default: "", Usage: "Target file path (defaults to temp file)"},
 				},
 			},
@@ -66,7 +71,7 @@ var Registry = map[string]TargetSpec{
 					{Name: "jitter", Type: "int", Default: 0, Usage: "Jitter in ms"},
 					{Name: "loss", Type: "float", Default: 0, Usage: "Packet loss percent (0-100)"},
 					{Name: "bandwidth", Type: "int", Default: 0, Usage: "Bandwidth cap in kbps (0 means unlimited)"},
-					{Name: "filter", Type: "string", Default: "true", Usage: "WinDivert filter expression (e.g., 'outbound and tcp')"},
+					{Name: "filter", Type: "string", Default: "outbound and tcp", Usage: "WinDivert filter expression (e.g., 'outbound and tcp')"},
 				},
 			},
 		},

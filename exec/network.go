@@ -65,7 +65,7 @@ func (r *NetworkDelayRunner) Run(ctx context.Context) error {
 	}()
 
 	pktBuf := make([]byte, 1<<16) // 64 KiB for packet payloads
-	addrBuf := make([]byte, 64)   // WINDIVERT_ADDRESS opaque storage
+	addrBuf := make([]byte, 128)  // WINDIVERT_ADDRESS opaque storage (use larger buffer to be safe)
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	baseDelay := time.Duration(r.DelayMillis) * time.Millisecond
@@ -142,8 +142,8 @@ const (
 var (
 	winDivertDLL          = syscall.NewLazyDLL("WinDivert.dll")
 	procWinDivertOpen     = winDivertDLL.NewProc("WinDivertOpen")
-	procWinDivertRecv     = winDivertDLL.NewProc("WinDivertRecvEx")
-	procWinDivertSend     = winDivertDLL.NewProc("WinDivertSendEx")
+	procWinDivertRecv     = winDivertDLL.NewProc("WinDivertRecv")
+	procWinDivertSend     = winDivertDLL.NewProc("WinDivertSend")
 	procWinDivertClose    = winDivertDLL.NewProc("WinDivertClose")
 	procWinDivertShutdown = winDivertDLL.NewProc("WinDivertShutdown")
 )
@@ -171,18 +171,28 @@ func winDivertOpen(filter string) (syscall.Handle, error) {
 		uintptr(int16(0)),
 		uintptr(uint64(0)),
 	)
-	if h == 0 {
+	// WinDivertOpen returns NULL or INVALID_HANDLE_VALUE (-1) on failure
+	if h == 0 || h == ^uintptr(0) {
+		// Return a more detailed error including the underlying syscall error
 		if callErr != nil {
-			return 0, callErr
+			if errno, ok := callErr.(syscall.Errno); ok {
+				return 0, fmt.Errorf("WinDivertOpen failed: %w (errno=%d)", errno, int(errno))
+			}
+			return 0, fmt.Errorf("WinDivertOpen failed: %v", callErr)
 		}
-		return 0, syscall.EINVAL
+		return 0, fmt.Errorf("WinDivertOpen failed: unknown error (handle invalid)")
 	}
+	// Debug: print handle value
+	fmt.Printf("DEBUG: WinDivertOpen returned handle=0x%X\n", h)
 	return syscall.Handle(h), nil
 }
 
 func winDivertRecv(h syscall.Handle, pktBuf []byte, addrBuf []byte) (int, int, error) {
 	var recvLen uint64
 	addrLen := uint32(len(addrBuf))
+
+	// Debug: print buffer sizes before call
+	fmt.Printf("DEBUG: WinDivertRecv called with handle=0x%X pktBufLen=%d addrBufLen=%d\n", h, len(pktBuf), len(addrBuf))
 
 	r1, _, err := procWinDivertRecv.Call(
 		uintptr(h),
@@ -195,9 +205,12 @@ func winDivertRecv(h syscall.Handle, pktBuf []byte, addrBuf []byte) (int, int, e
 	)
 	if r1 == 0 {
 		if err != nil {
-			return 0, 0, err
+			if errno, ok := err.(syscall.Errno); ok {
+				return 0, 0, fmt.Errorf("WinDivertRecv failed: %w (errno=%d)", errno, int(errno))
+			}
+			return 0, 0, fmt.Errorf("WinDivertRecv failed: %v", err)
 		}
-		return 0, 0, syscall.EINVAL
+		return 0, 0, fmt.Errorf("WinDivertRecv failed: unknown error (r1==0)")
 	}
 	return int(recvLen), int(addrLen), nil
 }
@@ -217,9 +230,12 @@ func winDivertSend(h syscall.Handle, pkt []byte, addr []byte) error {
 	)
 	if r1 == 0 {
 		if err != nil {
-			return err
+			if errno, ok := err.(syscall.Errno); ok {
+				return fmt.Errorf("WinDivertSend failed: %w (errno=%d)", errno, int(errno))
+			}
+			return fmt.Errorf("WinDivertSend failed: %v", err)
 		}
-		return syscall.EINVAL
+		return fmt.Errorf("WinDivertSend failed: unknown error (r1==0)")
 	}
 	if int(sendLen) != len(pkt) {
 		return fmt.Errorf("partial send: %d/%d", sendLen, len(pkt))

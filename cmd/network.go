@@ -17,6 +17,8 @@ import (
 var netTargetSpec = spec.Registry["net"]
 var netDelayAction = spec.MustActionSpec("net", "delay")
 var netDefaultFilter = stringDefault(netDelayAction.Flags, "filter", "true")
+var netDetach bool
+var netDetachedChild bool
 
 var netCmd = &cobra.Command{
 	Use:   "net",
@@ -50,7 +52,17 @@ var netDelayCmd = &cobra.Command{
 
 		runner := exec.NewNetworkDelayRunner(netDelayMs, netJitterMs, netLossPercent, netFilter, netBandwidthKbps)
 
-		cleanup, err := exec.TrackExperiment("net", "delay", map[string]string{
+		if netDetach && !netDetachedChild {
+			args := []string{"create", "net", "delay", strconv.Itoa(netDelayMs), "--jitter", strconv.Itoa(netJitterMs), "--loss", fmt.Sprintf("%.2f", netLossPercent), "--filter", netFilter, "--detached-child"}
+			pid, err := exec.StartDetachedExperiment(args)
+			if err != nil {
+				return err
+			}
+			fmt.Printf("Started detached experiment pid=%d\n", pid)
+			return nil
+		}
+
+		id, cleanup, err := exec.TrackExperiment("net", "delay", map[string]string{
 			"delay":         strconv.Itoa(netDelayMs),
 			"jitter":        strconv.Itoa(netJitterMs),
 			"loss":          fmt.Sprintf("%.2f", netLossPercent),
@@ -60,7 +72,9 @@ var netDelayCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		defer cleanup()
+		fmt.Printf("Started experiment id=%s\n", id)
 
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
@@ -92,6 +106,9 @@ func init() {
 		"filter":    &netFilter,
 		"bandwidth": &netBandwidthKbps,
 	})
+	netDelayCmd.Flags().BoolVar(&netDetach, "detach", false, "run experiment detached (returns immediately)")
+	netDelayCmd.Flags().BoolVar(&netDetachedChild, "detached-child", false, "(internal) run as detached child and write state")
+	_ = netDelayCmd.Flags().MarkHidden("detached-child")
 }
 
 func stringDefault(flags []spec.FlagSpec, name, fallback string) string {

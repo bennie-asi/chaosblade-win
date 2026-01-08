@@ -9,60 +9,80 @@ import (
 )
 
 var destroyCpuCmd = &cobra.Command{
-	Use:   "cpu",
-	Short: "Stop a running CPU experiment",
+	Use:   "cpu [id]",
+	Short: "Stop a running CPU experiment (optionally by id)",
+	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		state, err := exec.KillTrackedExperiment("cpu")
+		id := ""
+		if len(args) == 1 {
+			id = args[0]
+		}
+		state, err := exec.KillTrackedExperiment("cpu", id)
 		if err != nil {
 			return err
 		}
 		if state != nil {
-			fmt.Printf("Stopped CPU experiment (pid=%d).\n", state.PID)
+			fmt.Printf("Stopped CPU experiment id=%s pid=%d.\n", state.ID, state.PID)
 		}
 		return nil
 	},
 }
 
 var destroyMemCmd = &cobra.Command{
-	Use:   "mem",
-	Short: "Stop a running memory experiment",
+	Use:   "mem [id]",
+	Short: "Stop a running memory experiment (optionally by id)",
+	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		state, err := exec.KillTrackedExperiment("mem")
+		id := ""
+		if len(args) == 1 {
+			id = args[0]
+		}
+		state, err := exec.KillTrackedExperiment("mem", id)
 		if err != nil {
 			return err
 		}
 		if state != nil {
-			fmt.Printf("Stopped memory experiment (pid=%d).\n", state.PID)
+			fmt.Printf("Stopped memory experiment id=%s pid=%d.\n", state.ID, state.PID)
 		}
 		return nil
 	},
 }
 
 var destroyDiskCmd = &cobra.Command{
-	Use:   "disk",
-	Short: "Stop a running disk experiment",
+	Use:   "disk [id]",
+	Short: "Stop a running disk experiment (optionally by id)",
+	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		state, err := exec.KillTrackedExperiment("disk")
+		id := ""
+		if len(args) == 1 {
+			id = args[0]
+		}
+		state, err := exec.KillTrackedExperiment("disk", id)
 		if err != nil {
 			return err
 		}
 		if state != nil {
-			fmt.Printf("Stopped disk experiment (pid=%d).\n", state.PID)
+			fmt.Printf("Stopped disk experiment id=%s pid=%d.\n", state.ID, state.PID)
 		}
 		return nil
 	},
 }
 
 var destroyNetCmd = &cobra.Command{
-	Use:   "net",
-	Short: "Stop a running network experiment",
+	Use:   "net [id]",
+	Short: "Stop a running network experiment (optionally by id)",
+	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		state, err := exec.KillTrackedExperiment("net")
+		id := ""
+		if len(args) == 1 {
+			id = args[0]
+		}
+		state, err := exec.KillTrackedExperiment("net", id)
 		if err != nil {
 			return err
 		}
 		if state != nil {
-			fmt.Printf("Stopped network experiment (pid=%d).\n", state.PID)
+			fmt.Printf("Stopped network experiment id=%s pid=%d.\n", state.ID, state.PID)
 		}
 		return nil
 	},

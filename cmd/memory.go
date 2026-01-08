@@ -16,6 +16,8 @@ import (
 
 var memSizeMB int64
 var memPercent float64
+var memDetach bool
+var memDetachedChild bool
 
 var memTargetSpec = spec.Registry["mem"]
 
@@ -38,7 +40,17 @@ var memLoadCmd = &cobra.Command{
 			sizeBytes = int64(float64(stats.Total) * memPercent / 100)
 		}
 
-		cleanup, err := exec.TrackExperiment("mem", "load", map[string]string{
+		if memDetach && !memDetachedChild {
+			args := []string{"create", "mem", "load", "--size", fmt.Sprintf("%d", memSizeMB), "--detached-child"}
+			pid, err := exec.StartDetachedExperiment(args)
+			if err != nil {
+				return err
+			}
+			fmt.Printf("Started detached experiment pid=%d\n", pid)
+			return nil
+		}
+
+		id, cleanup, err := exec.TrackExperiment("mem", "load", map[string]string{
 			"bytes":   fmt.Sprintf("%d", sizeBytes),
 			"percent": fmt.Sprintf("%.2f", memPercent),
 		})
@@ -46,6 +58,7 @@ var memLoadCmd = &cobra.Command{
 			return err
 		}
 		defer cleanup()
+		fmt.Printf("Started experiment id=%s\n", id)
 
 		runner := exec.NewMemoryRunner(sizeBytes)
 
@@ -68,4 +81,7 @@ func init() {
 		"size":    &memSizeMB,
 		"percent": &memPercent,
 	})
+	memLoadCmd.Flags().BoolVar(&memDetach, "detach", false, "run experiment detached (returns immediately)")
+	memLoadCmd.Flags().BoolVar(&memDetachedChild, "detached-child", false, "(internal) run as detached child and write state")
+	_ = memLoadCmd.Flags().MarkHidden("detached-child")
 }

@@ -19,6 +19,8 @@ import (
 var cpuCores int
 var cpuPercent int
 var cpuDuration time.Duration
+var cpuDetach bool
+var cpuDetachedChild bool
 
 var cpuTargetSpec = spec.Registry["cpu"]
 
@@ -47,7 +49,19 @@ var cpuLoadCmd = &cobra.Command{
 			return fmt.Errorf("duration must be zero or positive")
 		}
 
-		cleanup, err := exec.TrackExperiment("cpu", "load", map[string]string{
+		// If detach requested and this is the parent (not the child), spawn a child process
+		if cpuDetach && !cpuDetachedChild {
+			args := []string{"create", "cpu", "load", "--cores", strconv.Itoa(cores), "--percent", strconv.Itoa(percent), "--duration", cpuDuration.String(), "--detached-child"}
+			pid, err := exec.StartDetachedExperiment(args)
+			if err != nil {
+				return err
+			}
+			// child will write its own state; parent returns immediately
+			fmt.Printf("Started detached experiment pid=%d\n", pid)
+			return nil
+		}
+
+		id, cleanup, err := exec.TrackExperiment("cpu", "load", map[string]string{
 			"cores":    strconv.Itoa(cores),
 			"percent":  strconv.Itoa(percent),
 			"duration": cpuDuration.String(),
@@ -56,6 +70,7 @@ var cpuLoadCmd = &cobra.Command{
 			return err
 		}
 		defer cleanup()
+		fmt.Printf("Started experiment id=%s\n", id)
 
 		runner := exec.NewCPURunner(cores, percent, cpuDuration)
 
@@ -81,4 +96,7 @@ func init() {
 		"percent":  &cpuPercent,
 		"duration": &cpuDuration,
 	})
+	cpuLoadCmd.Flags().BoolVar(&cpuDetach, "detach", false, "run experiment detached (returns immediately)")
+	cpuLoadCmd.Flags().BoolVar(&cpuDetachedChild, "detached-child", false, "(internal) run as detached child and write state")
+	_ = cpuLoadCmd.Flags().MarkHidden("detached-child")
 }

@@ -18,6 +18,8 @@ import (
 var diskSizeMB int64
 var diskPath string
 var diskPercent float64
+var diskDetach bool
+var diskDetachedChild bool
 
 var diskTargetSpec = spec.Registry["disk"]
 
@@ -57,7 +59,17 @@ var diskFillCmd = &cobra.Command{
 			}
 		}
 
-		cleanup, err := exec.TrackExperiment("disk", "fill", map[string]string{
+		if diskDetach && !diskDetachedChild {
+			args := []string{"create", "disk", "fill", "--size", fmt.Sprintf("%d", diskSizeMB), "--detached-child"}
+			pid, err := exec.StartDetachedExperiment(args)
+			if err != nil {
+				return err
+			}
+			fmt.Printf("Started detached experiment pid=%d\n", pid)
+			return nil
+		}
+
+		id, cleanup, err := exec.TrackExperiment("disk", "fill", map[string]string{
 			"bytes":   fmt.Sprintf("%d", sizeBytes),
 			"path":    diskPath,
 			"percent": fmt.Sprintf("%.2f", diskPercent),
@@ -66,6 +78,7 @@ var diskFillCmd = &cobra.Command{
 			return err
 		}
 		defer cleanup()
+		fmt.Printf("Started experiment id=%s\n", id)
 
 		runner := exec.NewDiskFillRunner(diskPath, sizeBytes)
 
@@ -94,4 +107,7 @@ func init() {
 		"path":    &diskPath,
 		"percent": &diskPercent,
 	})
+	diskFillCmd.Flags().BoolVar(&diskDetach, "detach", false, "run experiment detached (returns immediately)")
+	diskFillCmd.Flags().BoolVar(&diskDetachedChild, "detached-child", false, "(internal) run as detached child and write state")
+	_ = diskFillCmd.Flags().MarkHidden("detached-child")
 }
